@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Memory Management Simulator - Page Replacement Algorithms</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+    
+    <!-- Header Section -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1 class="terminal-text">OS MEMORY SIMULATOR</h1>
+                <p class="subtitle">Page Replacement Algorithm Visualizer</p>
+            </div>
+            <div class="header-stats">
+                <span class="stat-badge">Status: <span id="status">Ready</span></span>
+                <span class="stat-badge">Version: 1.0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        
+        <!-- Left Panel: Controls -->
+        <section class="control-section">
+            <h2 class="section-title">Configuration</h2>
+            
+            <!-- Algorithm Selection -->
+            <div class="control-group">
+                <label class="control-label">Algorithm</label>
+                <div class="button-group">
+                    <button class="algo-btn active" data-algo="FIFO">FIFO</button>
+                    <button class="algo-btn" data-algo="LRU">LRU</button>
+                    <button class="algo-btn" data-algo="OPTIMAL">Optimal</button>
+                    <button class="algo-btn" data-algo="CLOCK">Clock</button>
+                </div>
+            </div>
+
+            <!-- Input Mode Selection -->
+            <div class="control-group">
+                <label class="control-label">Input Mode</label>
+                <div class="button-group">
+                    <button class="mode-btn active" data-mode="preset">Preset</button>
+                    <button class="mode-btn" data-mode="custom">Custom</button>
+                </div>
+            </div>
+
+            <!-- Preset Scenarios -->
+            <div class="control-group" id="preset-group">
+                <label class="control-label">Preset Scenarios</label>
+                <select id="preset-select" class="select-input">
+                    <option value="">-- Select a scenario --</option>
+                    <option value="scenario1">Scenario 1: Light Load</option>
+                    <option value="scenario2">Scenario 2: Normal Load</option>
+                    <option value="scenario3">Scenario 3: Heavy Load</option>
+                    <option value="scenario4">Scenario 4: Worst Case</option>
+                </select>
+            </div>
+
+            <!-- Custom Input -->
+            <div class="control-group hidden" id="custom-group">
+                <label class="control-label">Memory Configuration</label>
+                <div class="input-row">
+                    <div class="input-field">
+                        <label>Frame Count</label>
+                        <input type="number" id="frame-count" value="3" min="1" max="8">
+                    </div>
+                    <div class="input-field">
+                        <label>Reference String</label>
+                        <input type="text" id="ref-string" placeholder="e.g. 1,2,3,2,1,5,3,1" value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animation Speed -->
+            <div class="control-group">
+                <label class="control-label">Speed</label>
+                <div class="speed-control">
+                    <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1" class="slider">
+                    <span id="speed-value">1.0x</span>
+                </div>
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="control-group">
+                <label class="control-label">Playback</label>
+                <div class="playback-controls">
+                    <button id="reset-btn" class="control-btn" title="Reset simulation">
+                        <span class="btn-icon">⟲</span>
+                        <span>Reset</span>
+                    </button>
+                    <button id="prev-btn" class="control-btn" title="Previous step">
+                        <span class="btn-icon">◄◄</span>
+                    </button>
+                    <button id="play-btn" class="control-btn active" title="Play/Pause">
+                        <span class="btn-icon">▶</span>
+                    </button>
+                    <button id="next-btn" class="control-btn" title="Next step">
+                        <span class="btn-icon">►►</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Export -->
+            <div class="control-group">
+                <label class="control-label">Export</label>
+                <button id="screenshot-btn" class="export-btn">📸 Screenshot</button>
+                <button id="export-trace-btn" class="export-btn">📊 Export Trace</button>
+            </div>
+        </section>
+
+        <!-- Right Panel: Visualization & Statistics -->
+        <section class="visualization-section">
+            
+            <!-- Visualization Canvas -->
+            <div class="canvas-container">
+                <h2 class="section-title">Memory Visualization</h2>
+                <canvas id="visualization-canvas"></canvas>
+                <div class="timeline-control">
+                    <input type="range" id="timeline-slider" min="0" max="100" value="0" class="slider">
+                    <span id="timeline-info">Step: 0 / 0</span>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="stats-container">
+                <h2 class="section-title">Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Page Faults</span>
+                        <span class="stat-value" id="stat-faults">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Hit Rate</span>
+                        <span class="stat-value" id="stat-hit-rate">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Frame Utilization</span>
+                        <span class="stat-value" id="stat-utilization">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total References</span>
+                        <span class="stat-value" id="stat-total">0</span>
+                    </div>
+                </div>
+
+                <!-- Detailed Info Panel -->
+                <div class="info-panel">
+                    <h3 class="info-title">Current Step Information</h3>
+                    <div class="info-content">
+                        <p id="info-text">Select an algorithm and click play to start simulation</p>
+                        <div class="memory-state">
+                            <div class="state-label">Memory Frames:</div>
+                            <div id="frames-display" class="frames-display"></div>
+                        </div>
+                        <div class="queue-state">
+                            <div class="state-label">Queue:</div>
+                            <div id="queue-display" class="queue-display"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Algorithm Info -->
+                <div class="algo-info-panel">
+                    <h3 class="info-title" id="algo-title">FIFO</h3>
+                    <p id="algo-description" class="algo-description">
+                        First In First Out - The simplest page replacement algorithm. Pages are replaced in the order they were loaded into memory.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+        <!-- Scripts -->
+        <!-- Consolidated app logic lives in script.js; remove legacy duplicates to avoid conflicts -->
+        <script src="script.js"></script>
+</body>
+</html>
