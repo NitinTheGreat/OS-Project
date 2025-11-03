@@ -1,8 +1,3 @@
-/**
- * Page Replacement Algorithms
- * Implementation of FIFO, LRU, Optimal, and Clock algorithms
- */
-
 class PageReplacementSimulator {
   constructor(frames, referenceString) {
     this.frames = frames
