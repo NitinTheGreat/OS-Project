@@ -1,8 +1,3 @@
-/**
- * Canvas Animation and Visualization Engine
- * Handles smooth animations and visual rendering
- */
-
 class AnimationEngine {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId)

@@ -1,28 +1,38 @@
-/**
- * OS Memory Simulator - Complete Application Logic
- * All-in-one consolidated implementation with proper event handling
- */
-
-// ============================================
-// Canvas Animation Engine
-// ============================================
 class AnimationEngine {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId)
     this.ctx = this.canvas.getContext("2d")
     this.resizeCanvas()
+    this.initializeContext()
+  }
+
+  initializeContext() {
+    // Enable high-quality rendering
+    this.ctx.imageSmoothingEnabled = true
+    this.ctx.imageSmoothingQuality = 'high'
   }
 
   resizeCanvas() {
     const rect = this.canvas.parentElement.getBoundingClientRect()
     this.canvas.width = Math.max(rect.width - 32, 300)
     this.canvas.height = 350
+    this.initializeContext()
+  }
+
+  clearCanvas() {
+    // Complete canvas clearing to prevent ghosting
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    this.ctx.save()
+    this.ctx.globalCompositeOperation = 'source-over'
+    this.ctx.globalAlpha = 1.0
+    this.ctx.fillStyle = "#0a0e27"
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+    this.ctx.restore()
   }
 
   drawMemoryFrames(frames, frameCount, highlightIndex = -1, isHit = false, isFault = false) {
-    // Clear canvas
-    this.ctx.fillStyle = "rgba(10, 14, 39, 0.6)"
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+    // Complete clear to eliminate burn-in effect
+    this.clearCanvas()
 
     const frameWidth = 70
     const frameHeight = 90
@@ -38,10 +48,14 @@ class AnimationEngine {
       hit: "#00ccff",
     }
 
-    // Draw each frame
+    // Draw each frame with proper clearing
     frames.forEach((page, index) => {
       const x = startX + index * (frameWidth + spacing)
       const y = startY
+
+      // Clear the specific frame area first to prevent ghosting
+      this.ctx.save()
+      this.ctx.clearRect(x - 3, y - 3, frameWidth + 6, frameHeight + 6)
 
       let color = colors.empty
       let borderColor = colors.empty
@@ -56,18 +70,27 @@ class AnimationEngine {
         }
       }
 
-      // Draw frame background
+      // Draw frame background with full opacity
+      this.ctx.globalAlpha = 1.0
       this.ctx.fillStyle = `rgba(${this.hexToRgb(color)}, 0.1)`
       this.ctx.strokeStyle = borderColor
       this.ctx.lineWidth = 2
-      this.ctx.shadowColor = isFault && index === highlightIndex ? "rgba(255, 0, 85, 0.5)" : "transparent"
-      this.ctx.shadowBlur = 10
+      
+      if (isFault && index === highlightIndex) {
+        this.ctx.shadowColor = "rgba(255, 0, 85, 0.5)"
+        this.ctx.shadowBlur = 10
+      }
+      
       this.ctx.fillRect(x, y, frameWidth, frameHeight)
       this.ctx.strokeRect(x, y, frameWidth, frameHeight)
+      
+      // Reset shadow
       this.ctx.shadowColor = "transparent"
+      this.ctx.shadowBlur = 0
 
-      // Draw page number
+      // Draw page number with complete opacity
       if (page !== null) {
+        this.ctx.globalAlpha = 1.0
         this.ctx.fillStyle = borderColor
         this.ctx.font = "bold 28px monospace"
         this.ctx.textAlign = "center"
@@ -78,6 +101,7 @@ class AnimationEngine {
         this.ctx.fillStyle = "#4a6a9a"
         this.ctx.fillText(`Frm ${index}`, x + frameWidth / 2, y + frameHeight - 12)
       } else {
+        this.ctx.globalAlpha = 1.0
         this.ctx.fillStyle = "#4a6a9a"
         this.ctx.font = "italic 13px monospace"
         this.ctx.textAlign = "center"
@@ -86,6 +110,8 @@ class AnimationEngine {
         this.ctx.font = "11px monospace"
         this.ctx.fillText(`Frm ${index}`, x + frameWidth / 2, y + frameHeight - 12)
       }
+      
+      this.ctx.restore()
     })
 
     // Draw queue and stats
@@ -94,6 +120,8 @@ class AnimationEngine {
   }
 
   drawQueue(queue, startX, startY) {
+    this.ctx.save()
+    this.ctx.globalAlpha = 1.0
     this.ctx.fillStyle = "#00ccff"
     this.ctx.font = "bold 12px monospace"
     this.ctx.textAlign = "left"
@@ -106,6 +134,10 @@ class AnimationEngine {
 
     queue.forEach((page) => {
       if (page !== null) {
+        // Clear specific area
+        this.ctx.clearRect(currentX - 1, startY + 17, itemWidth + 2, itemHeight + 2)
+        
+        this.ctx.globalAlpha = 1.0
         this.ctx.fillStyle = "rgba(0, 204, 255, 0.1)"
         this.ctx.strokeStyle = "#00ccff"
         this.ctx.lineWidth = 1
@@ -121,9 +153,12 @@ class AnimationEngine {
         currentX += itemWidth + 12
       }
     })
+    this.ctx.restore()
   }
 
   drawStatisticsHUD(startX, startY) {
+    this.ctx.save()
+    this.ctx.globalAlpha = 1.0
     this.ctx.fillStyle = "#00ff88"
     this.ctx.font = "bold 11px monospace"
     this.ctx.textAlign = "left"
@@ -138,6 +173,7 @@ class AnimationEngine {
 
     let currentX = startX
     legend.forEach((item) => {
+      this.ctx.globalAlpha = 1.0
       this.ctx.fillStyle = item.color
       this.ctx.fillRect(currentX, startY + 16, 12, 12)
       this.ctx.fillStyle = "#4a6a9a"
@@ -146,6 +182,7 @@ class AnimationEngine {
       this.ctx.fillText(item.label, currentX + 16, startY + 16)
       currentX += 90
     })
+    this.ctx.restore()
   }
 
   hexToRgb(hex) {
@@ -478,8 +515,14 @@ class OSMemorySimulator {
         this.isPlaying = false
         this.stopAnimation()
         this.updatePlayButton()
-        this.updateVisualization()
-        this.updateStatistics()
+        
+        // Use requestAnimationFrame for smooth timeline scrubbing
+        requestAnimationFrame(() => {
+          this.updateVisualization()
+          this.updateStatistics()
+          this.updateFramesDisplay()
+          this.updateQueueDisplay()
+        })
       })
     }
 
@@ -490,7 +533,10 @@ class OSMemorySimulator {
     // Window resize
     window.addEventListener("resize", () => {
       this.animationEngine.resizeCanvas()
-      this.updateVisualization()
+      // Smooth redraw on resize
+      requestAnimationFrame(() => {
+        this.updateVisualization()
+      })
     })
   }
 
@@ -594,10 +640,13 @@ class OSMemorySimulator {
 
     const animate = () => {
       if (this.isPlaying && this.currentStepIndex < this.simulator.getTotalSteps()) {
-        this.updateVisualization()
-        this.updateStatistics()
-        this.updateFramesDisplay()
-        this.updateQueueDisplay()
+        // Use requestAnimationFrame for smoother rendering
+        requestAnimationFrame(() => {
+          this.updateVisualization()
+          this.updateStatistics()
+          this.updateFramesDisplay()
+          this.updateQueueDisplay()
+        })
 
         this.currentStepIndex++
         this.updateTimeline()
@@ -627,13 +676,18 @@ class OSMemorySimulator {
     if (!this.simulator) return
     if (this.currentStepIndex < this.simulator.getTotalSteps() - 1) {
       this.isPlaying = false
+      this.stopAnimation()
       this.updatePlayButton()
       this.currentStepIndex++
       this.updateTimeline()
-      this.updateVisualization()
-      this.updateStatistics()
-      this.updateFramesDisplay()
-      this.updateQueueDisplay()
+      
+      // Use requestAnimationFrame for smooth step transition
+      requestAnimationFrame(() => {
+        this.updateVisualization()
+        this.updateStatistics()
+        this.updateFramesDisplay()
+        this.updateQueueDisplay()
+      })
     }
   }
 
@@ -641,13 +695,18 @@ class OSMemorySimulator {
     if (!this.simulator) return
     if (this.currentStepIndex > 0) {
       this.isPlaying = false
+      this.stopAnimation()
       this.updatePlayButton()
       this.currentStepIndex--
       this.updateTimeline()
-      this.updateVisualization()
-      this.updateStatistics()
-      this.updateFramesDisplay()
-      this.updateQueueDisplay()
+      
+      // Use requestAnimationFrame for smooth step transition
+      requestAnimationFrame(() => {
+        this.updateVisualization()
+        this.updateStatistics()
+        this.updateFramesDisplay()
+        this.updateQueueDisplay()
+      })
     }
   }
 
@@ -673,19 +732,22 @@ class OSMemorySimulator {
     const step = this.simulator.getStep(this.currentStepIndex)
     if (!step) return
 
-    const memoryFrames = [...step.memoryAfter]
-    while (memoryFrames.length < this.simulator.frames) {
-      memoryFrames.push(null)
-    }
+    // Use requestAnimationFrame for smooth rendering
+    requestAnimationFrame(() => {
+      const memoryFrames = [...step.memoryAfter]
+      while (memoryFrames.length < this.simulator.frames) {
+        memoryFrames.push(null)
+      }
 
-    const highlightIndex = memoryFrames.indexOf(step.page)
-    this.animationEngine.drawMemoryFrames(
-      memoryFrames,
-      this.simulator.frames,
-      highlightIndex,
-      !step.pageFault,
-      step.pageFault,
-    )
+      const highlightIndex = memoryFrames.indexOf(step.page)
+      this.animationEngine.drawMemoryFrames(
+        memoryFrames,
+        this.simulator.frames,
+        highlightIndex,
+        !step.pageFault,
+        step.pageFault,
+      )
+    })
   }
 
   updateStatistics() {
