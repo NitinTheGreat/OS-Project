@@ -14,19 +14,34 @@ class AnimationEngine {
 
   resizeCanvas() {
     const rect = this.canvas.parentElement.getBoundingClientRect()
-    this.canvas.width = Math.max(rect.width - 32, 300)
-    this.canvas.height = 350
+    // Set actual pixel dimensions larger for crisp rendering
+    const dpr = window.devicePixelRatio || 1
+    
+    // Dynamic height based on available space
+    const canvasHeight = Math.max(350, rect.height - 80)
+    
+    this.canvas.width = Math.max(rect.width - 32, 300) * dpr
+    this.canvas.height = canvasHeight * dpr
+    
+    // Scale back down with CSS
+    this.canvas.style.width = Math.max(rect.width - 32, 300) + 'px'
+    this.canvas.style.height = canvasHeight + 'px'
+    
+    // Scale context to match device pixel ratio
+    this.ctx.scale(dpr, dpr)
+    
     this.initializeContext()
   }
 
   clearCanvas() {
     // Complete canvas clearing to prevent ghosting
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    const dpr = window.devicePixelRatio || 1
+    this.ctx.clearRect(0, 0, this.canvas.width / dpr, this.canvas.height / dpr)
     this.ctx.save()
     this.ctx.globalCompositeOperation = 'source-over'
     this.ctx.globalAlpha = 1.0
     this.ctx.fillStyle = "#0a0e27"
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+    this.ctx.fillRect(0, 0, this.canvas.width / dpr, this.canvas.height / dpr)
     this.ctx.restore()
   }
 
@@ -37,15 +52,27 @@ class AnimationEngine {
     const frameWidth = 70
     const frameHeight = 90
     const spacing = 20
+    const dpr = window.devicePixelRatio || 1
+    const canvasWidth = this.canvas.width / dpr
+    const canvasHeight = this.canvas.height / dpr
+    
+    // Calculate total width needed for all frames
     const totalWidth = frameCount * (frameWidth + spacing) - spacing
-    const startX = (this.canvas.width - totalWidth) / 2
-    const startY = 30
+    
+    // Center the frames horizontally in the canvas
+    const startX = Math.max(20, (canvasWidth - totalWidth) / 2)
+    
+    // Center the frames vertically in the canvas (accounting for queue and legend below)
+    const queueHeight = 80  // Space needed for queue display
+    const legendHeight = 50 // Space needed for legend
+    const totalContentHeight = frameHeight + queueHeight + legendHeight
+    const startY = Math.max(20, (canvasHeight - totalContentHeight) / 2)
 
     const colors = {
       empty: "#4a6a9a",
       normal: "#00ff88",
-      highlight: "#ff0055",
-      hit: "#00ccff",
+      hit: "#ff0055",    // Red for hit
+      fault: "#00ccff",  // Blue for fault
     }
 
     // Draw each frame with proper clearing
@@ -62,7 +89,8 @@ class AnimationEngine {
 
       if (page !== null) {
         if (index === highlightIndex) {
-          color = isFault ? colors.highlight : isHit ? colors.hit : colors.normal
+          // Hit = Red, Fault = Blue
+          color = isHit ? colors.hit : isFault ? colors.fault : colors.normal
           borderColor = color
         } else {
           color = colors.normal
@@ -76,8 +104,8 @@ class AnimationEngine {
       this.ctx.strokeStyle = borderColor
       this.ctx.lineWidth = 2
       
-      if (isFault && index === highlightIndex) {
-        this.ctx.shadowColor = "rgba(255, 0, 85, 0.5)"
+      if (index === highlightIndex) {
+        this.ctx.shadowColor = isHit ? "rgba(255, 0, 85, 0.5)" : "rgba(0, 204, 255, 0.5)"
         this.ctx.shadowBlur = 10
       }
       
@@ -160,27 +188,28 @@ class AnimationEngine {
     this.ctx.save()
     this.ctx.globalAlpha = 1.0
     this.ctx.fillStyle = "#00ff88"
-    this.ctx.font = "bold 11px monospace"
+    this.ctx.font = "bold 14px monospace"  // Larger font
     this.ctx.textAlign = "left"
     this.ctx.textBaseline = "top"
     this.ctx.fillText("LEGEND:", startX, startY)
 
     const legend = [
       { color: "#00ff88", label: "Normal" },
-      { color: "#ff0055", label: "Fault" },
-      { color: "#00ccff", label: "Hit" },
+      { color: "#ff0055", label: "Hit" },     // Red for hit
+      { color: "#00ccff", label: "Fault" },   // Blue for fault
     ]
 
     let currentX = startX
     legend.forEach((item) => {
       this.ctx.globalAlpha = 1.0
       this.ctx.fillStyle = item.color
-      this.ctx.fillRect(currentX, startY + 16, 12, 12)
+      // Larger legend boxes
+      this.ctx.fillRect(currentX, startY + 20, 18, 18)
       this.ctx.fillStyle = "#4a6a9a"
-      this.ctx.font = "10px monospace"
+      this.ctx.font = "13px monospace"  // Larger text
       this.ctx.textAlign = "left"
-      this.ctx.fillText(item.label, currentX + 16, startY + 16)
-      currentX += 90
+      this.ctx.fillText(item.label, currentX + 24, startY + 20)
+      currentX += 110  // More spacing
     })
     this.ctx.restore()
   }
@@ -497,6 +526,26 @@ class OSMemorySimulator {
       speedSlider.addEventListener("input", (e) => {
         this.speed = Number.parseFloat(e.target.value)
         document.getElementById("speed-value").textContent = this.speed.toFixed(1) + "x"
+      })
+    }
+
+    // Custom input listeners - re-run simulation when inputs change
+    const frameCountInput = document.getElementById("frame-count")
+    const refStringInput = document.getElementById("ref-string")
+    
+    if (frameCountInput) {
+      frameCountInput.addEventListener("change", () => {
+        if (this.currentMode === "custom") {
+          this.runSimulationCustom()
+        }
+      })
+    }
+    
+    if (refStringInput) {
+      refStringInput.addEventListener("change", () => {
+        if (this.currentMode === "custom") {
+          this.runSimulationCustom()
+        }
       })
     }
 
